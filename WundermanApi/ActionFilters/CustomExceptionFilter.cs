@@ -17,9 +17,19 @@ public sealed class CustomExceptionFilter : ExceptionFilterAttribute
     {
         if (context.Exception is JobNotFoundException)
         {
+            _logger.LogInformation("Resource not found");
+            context.Result = new StatusCodeResult(404);
+        }
+        else if (context.Exception is OperationCanceledException)
+        {
             _logger.LogInformation("Request was cancelled");
             context.ExceptionHandled = true;
-            context.Result = new StatusCodeResult(404);
+            context.Result = new StatusCodeResult(499);
+        }
+        else if (context.Exception is CriticalException)
+        {
+            _logger.LogError(context.Exception.Message);
+            context.Result = new StatusCodeResult(500);
         }
     }
 }

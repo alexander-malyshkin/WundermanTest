@@ -4,3 +4,7 @@ Infrastructure/obj/
 Model/obj/
 Utilities/obj/
 WundermanApi/obj/
+Infrastructure/bin/
+Model/bin/
+Utilities/bin/
+WundermanApi/bin/

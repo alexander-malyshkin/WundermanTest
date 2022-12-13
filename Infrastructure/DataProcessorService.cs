@@ -57,7 +57,7 @@ public sealed class DataProcessorService : IDataProcessorService
         using (var releaser = LockExtensions.EnterWriteLock(_readerWriterLock, EnterWriteLockTimeout))
         {
             if (_jobsDictionary.ContainsKey(dataJob.Id))
-                throw new InvalidOperationException();
+                throw new InvalidOperationException("This job already exists");
             if (dataJob.Id == default)
                 dataJob.Id = Guid.NewGuid();
             
@@ -78,7 +78,7 @@ public sealed class DataProcessorService : IDataProcessorService
         using (var releaser = LockExtensions.EnterWriteLock(_readerWriterLock, EnterWriteLockTimeout))
         {
             if (!_jobsDictionary.ContainsKey(dataJob.Id))
-                throw new InvalidOperationException();
+                throw new InvalidOperationException("This job does not exist");
 
             var foundJob = _jobsDictionary[dataJob.Id];
 
@@ -108,7 +108,7 @@ public sealed class DataProcessorService : IDataProcessorService
         using (var releaser = LockExtensions.EnterWriteLock(_readerWriterLock, EnterWriteLockTimeout))
         {
             if (!_jobsDictionary.ContainsKey(dataJobID))
-                throw new InvalidOperationException();
+                throw new InvalidOperationException("This job does not exist");
 
             var foundJob = _jobsDictionary[dataJobID];
             if (!_jobsByStatus.ContainsKey(foundJob.Status))
@@ -159,10 +159,21 @@ public sealed class DataProcessorService : IDataProcessorService
     private void MarkDataJobAsProcessed(Guid id, IEnumerable<string> results)
     {
         var foundJob = GetDataJob(id);
-        foundJob.Status = DataJobStatus.Completed;
-        foundJob.Results = results;
-
-        Update(foundJob);
+        using (var releaser = LockExtensions.EnterWriteLock(_readerWriterLock, EnterWriteLockTimeout))
+        {
+            var jobsWithPrevStatus = _jobsByStatus.TryGetValue(foundJob.Status, out var foundJobs)
+                ? foundJobs
+                : throw new JobStatusNotFoundException();
+            jobsWithPrevStatus.Remove(foundJob);
+            if (!_jobsByStatus.ContainsKey(DataJobStatus.Completed))
+            {
+                _jobsByStatus.Add(DataJobStatus.Completed, new List<DataJobDTO>());
+            }
+            
+            foundJob.Status = DataJobStatus.Completed;
+            _jobsByStatus[DataJobStatus.Completed].Add(foundJob);
+            foundJob.Results = results;
+        }
     }
 
     public DataJobStatus GetBackgroundProcessStatus(Guid dataJobId)

@@ -1,3 +1,4 @@
+using Hellang.Middleware.ProblemDetails;
 using WundermanApi.ActionFilters;
 
 namespace WundermanApi
@@ -25,6 +26,7 @@ namespace WundermanApi
             });
 
             builder.Services.RegisterCustomServices();
+            ProblemDetailsExtensions.AddProblemDetails(builder.Services);
 
             var app = builder.Build();
 
